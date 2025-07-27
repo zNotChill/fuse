@@ -7,11 +7,15 @@ import io.lettuce.core.api.sync.RedisCommands
 import me.znotchill.fuse.database.RowRef
 import me.znotchill.fuse.redis.RedisField
 import me.znotchill.fuse.redis.RedisRow
+import me.znotchill.fuse.redis.serializers.BoolSerializer
+import me.znotchill.fuse.redis.serializers.EnumSerializer
 import me.znotchill.fuse.redis.serializers.IntSerializer
 import me.znotchill.fuse.redis.serializers.StringSerializer
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.BooleanColumnType
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.EnumerationNameColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
@@ -162,7 +166,9 @@ class FuseRedisAPI(
             redis = api.commands,
             serializers = mapOf(
                 VarCharColumnType::class to StringSerializer,
-                IntegerColumnType::class to IntSerializer
+                IntegerColumnType::class to IntSerializer,
+                BooleanColumnType::class to BoolSerializer,
+                EnumerationNameColumnType::class to EnumSerializer
             )
         )
     }
