@@ -7,14 +7,18 @@ import io.lettuce.core.api.sync.RedisCommands
 import me.znotchill.fuse.database.RowRef
 import me.znotchill.fuse.redis.RedisField
 import me.znotchill.fuse.redis.RedisRow
+import me.znotchill.fuse.redis.RedisSerializer
 import me.znotchill.fuse.redis.serializers.BoolSerializer
 import me.znotchill.fuse.redis.serializers.EnumSerializer
 import me.znotchill.fuse.redis.serializers.IntSerializer
+import me.znotchill.fuse.redis.serializers.JsonSerializer
 import me.znotchill.fuse.redis.serializers.StringSerializer
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.BooleanColumnType
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.EntityIDColumnType
 import org.jetbrains.exposed.sql.EnumerationNameColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Op
@@ -24,12 +28,14 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.json.JsonBColumnType
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import kotlin.reflect.KClass
 
 @Suppress("UNUSED")
 class FuseAPI {
@@ -38,6 +44,15 @@ class FuseAPI {
     lateinit var redisUrl: String
     lateinit var database: Database
     lateinit var redisConnection: StatefulRedisConnection<String, String>
+
+    val serializers: Map<KClass<*>, Pair<RedisSerializer, Class<*>>> = mapOf(
+        VarCharColumnType::class to (StringSerializer to String::class.java),
+        EntityIDColumnType::class to (StringSerializer to String::class.java),
+        IntegerColumnType::class to (IntSerializer to Int::class.java),
+        BooleanColumnType::class to (BoolSerializer to Boolean::class.java),
+        EnumerationNameColumnType::class to (EnumSerializer to Enum::class.java),
+        JsonBColumnType::class to (JsonSerializer to Any::class.java)
+    )
 
     var redis: FuseRedisAPI = FuseRedisAPI(this)
 
@@ -136,27 +151,25 @@ class FuseAPI {
 class FuseRedisAPI(
     val api: FuseAPI
 ) {
+
     fun populate(table: UUIDTable, row: ResultRow) {
         transaction {
-            val id = row[table.id]
+            val uuid = row[table.id].value
 
-            row.fieldIndex.forEach { entry ->
-                val column = entry.key
-                val fieldName = column.toString()
-                val fieldValue = row[column]
+            val redisRow = RedisRow(
+                table = table,
+                uuid = uuid,
+                redis = api.commands,
+                serializers = api.serializers
+            )
 
-                if (fieldValue == null) {
-                    return@forEach
-                }
+            table.columns.forEach { column ->
+                val value = row[column]
 
-                val key = getKey(table, id.value)
-                api.commands.hset(key, fieldName, fieldValue.toString())
+                @Suppress("UNCHECKED_CAST")
+                redisRow[column as Column<Any>] = value
             }
         }
-    }
-
-    private fun getKey(table: UUIDTable, uuid: UUID): String {
-        return "${table.tableName}:$uuid"
     }
 
     fun <T : UUIDTable> get(table: T, uuid: UUID): RedisRow {
@@ -164,12 +177,7 @@ class FuseRedisAPI(
             table = table,
             uuid = uuid,
             redis = api.commands,
-            serializers = mapOf(
-                VarCharColumnType::class to StringSerializer,
-                IntegerColumnType::class to IntSerializer,
-                BooleanColumnType::class to BoolSerializer,
-                EnumerationNameColumnType::class to EnumSerializer
-            )
+            serializers = api.serializers
         )
     }
 }
