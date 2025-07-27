@@ -5,14 +5,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import me.znotchill.fuse.Users.testArray
-import me.znotchill.fuse.Users.testBoolean
-import me.znotchill.fuse.Users.testEnum
-import me.znotchill.fuse.Users.testInt
-import me.znotchill.fuse.Users.testJson
 import me.znotchill.fuse.Users.username
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.json.jsonb
-import java.util.UUID
 
 enum class TestEnum {
     TEST1, TEST2, TEST3
