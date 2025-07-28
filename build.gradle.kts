@@ -28,7 +28,8 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("io.lettuce:lettuce-core:6.3.0.RELEASE")
     implementation("org.postgresql:postgresql:42.7.7")
-    implementation("com.google.code.gson:gson:2.13.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
 }
 
 tasks.test {

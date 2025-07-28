@@ -2,15 +2,7 @@ package me.znotchill.fuse
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import me.znotchill.fuse.Users.binary
-import me.znotchill.fuse.Users.date
-import me.znotchill.fuse.Users.dateTime
-import me.znotchill.fuse.Users.decimal
-import me.znotchill.fuse.Users.double
-import me.znotchill.fuse.Users.long
-import me.znotchill.fuse.Users.username
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.datetime
@@ -29,6 +21,13 @@ data class TestClass(
 )
 
 object Users: UUIDTable("users") {
+    val json = Json {
+        prettyPrint = true
+        isLenient = false
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
+
     val username = varchar("name", 30)
     val email = varchar("email", 50).nullable()
     val testInt = integer("test_int").default(0)
@@ -51,14 +50,19 @@ object Users: UUIDTable("users") {
         coerceInputValues = true
     }, TestClass.serializer())
         .default(TestClass("default", 0, false))
+        .registerSerializer(
+            TestClass.serializer(),
+            TestClass::class.java
+        )
 
-    val testArray = jsonb<List<String>>("test_array", Json {
-        prettyPrint = true
-        isLenient = false
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-    }, ListSerializer(String.serializer()))
+    val testArray = jsonb<List<TestClass>>("test_array", json,
+        ListSerializer(TestClass.serializer())
+    )
         .default(emptyList())
+        .registerSerializer(
+            ListSerializer(TestClass.serializer()),
+            List::class.java
+        )
 }
 
 fun main() {
@@ -76,35 +80,24 @@ fun main() {
 
     api.createTable(Users)
 
-//    val user = api.new(Users) {
-//        it[username] = "znotchill"
-//    }
-
     val redisUser = api.redis.get(Users, UUID.fromString("33558632-4eeb-4e98-b44d-ad94d04d121b"))
-    println(redisUser[binary])
-    println(redisUser[binary]?.contentToString())
-    println(redisUser[date])
-    println(redisUser[dateTime])
-    println(redisUser[decimal])
-    println(redisUser[double])
-    println(redisUser[long])
-    println(redisUser[username])
+    redisUser[Users.testInt] = 200
+    redisUser[Users.testBoolean] = false
+    redisUser[Users.testEnum] = TestEnum.TEST3
+    redisUser[Users.testArray] = listOf(
+        TestClass("test1", 123, true),
+        TestClass("test2", 256, false),
+        TestClass("test333", 31233, true)
+    )
+    redisUser[Users.testJson] = TestClass("test123123", 121233, true)
+    redisUser[Users.long] = 123456789L
+    redisUser[Users.double] = 3.14
+    redisUser[Users.decimal] = "123123.45".toBigDecimal()
+    redisUser[Users.text] = "This is a test text"
+    redisUser[Users.date] = java.time.LocalDate.of(20233, 10, 1)
+    redisUser[Users.dateTime] = java.time.LocalDateTime.of(2023, 10, 1, 12, 0)
+    redisUser[Users.uuid] = UUID.randomUUID()
+    redisUser[Users.binary] = "This is a test binary".toByteArray()
+    redisUser.pushToDatabase()
 
-//    redisUser[testInt] = 200
-//    redisUser[testBoolean] = false
-//    redisUser[testEnum] = TestEnum.TEST3
-//    redisUser[testArray] = listOf(
-//        "a",
-//        "b",
-//        "c"
-//    )
-//    redisUser[testJson] = TestClass("test", 123, true)
-//    redisUser[long] = 123456789L
-//    redisUser[double] = 3.14
-//    redisUser[decimal] = "123.45".toBigDecimal()
-//    redisUser[text] = "This is a test text"
-//    redisUser[date] = java.time.LocalDate.of(2023, 10, 1)
-//    redisUser[dateTime] = java.time.LocalDateTime.of(2023, 10, 1, 12, 0)
-//    redisUser[uuid] = java.util.UUID.randomUUID()
-//    redisUser[binary] = "This is a test binary".toByteArray()
 }

@@ -7,56 +7,14 @@ import io.lettuce.core.api.sync.RedisCommands
 import me.znotchill.fuse.database.RowRef
 import me.znotchill.fuse.redis.RedisField
 import me.znotchill.fuse.redis.RedisRow
-import me.znotchill.fuse.redis.RedisSerializer
-import me.znotchill.fuse.redis.serializers.BinarySerializer
-import me.znotchill.fuse.redis.serializers.BoolSerializer
-import me.znotchill.fuse.redis.serializers.DecimalSerializer
-import me.znotchill.fuse.redis.serializers.DoubleSerializer
-import me.znotchill.fuse.redis.serializers.EnumSerializer
-import me.znotchill.fuse.redis.serializers.IntSerializer
-import me.znotchill.fuse.redis.serializers.JsonSerializer
-import me.znotchill.fuse.redis.serializers.LocalDateSerializer
-import me.znotchill.fuse.redis.serializers.LocalDateTimeSerializer
-import me.znotchill.fuse.redis.serializers.LongSerializer
-import me.znotchill.fuse.redis.serializers.StringSerializer
-import me.znotchill.fuse.redis.serializers.UUIDSerializer
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
-import org.jetbrains.exposed.sql.BasicBinaryColumnType
-import org.jetbrains.exposed.sql.BinaryColumnType
-import org.jetbrains.exposed.sql.BooleanColumnType
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.DecimalColumnType
-import org.jetbrains.exposed.sql.DoubleColumnType
-import org.jetbrains.exposed.sql.EntityIDColumnType
-import org.jetbrains.exposed.sql.EnumerationNameColumnType
-import org.jetbrains.exposed.sql.IntegerColumnType
-import org.jetbrains.exposed.sql.LongColumnType
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.SqlExpressionBuilder
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.TextColumnType
-import org.jetbrains.exposed.sql.UUIDColumnType
-import org.jetbrains.exposed.sql.VarCharColumnType
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.javatime.JavaLocalDateColumnType
-import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
-import org.jetbrains.exposed.sql.jodatime.DateTimeWithTimeZoneColumnType
-import org.jetbrains.exposed.sql.json.JsonBColumnType
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.util.UUID
-import kotlin.reflect.KClass
+import java.util.*
 
 @Suppress("UNUSED")
 class FuseAPI {
@@ -66,23 +24,7 @@ class FuseAPI {
     lateinit var database: Database
     lateinit var redisConnection: StatefulRedisConnection<String, String>
 
-    val serializers: Map<KClass<*>, Pair<RedisSerializer, Class<*>>> = mapOf(
-        VarCharColumnType::class to (StringSerializer to String::class.java),
-        EntityIDColumnType::class to (UUIDSerializer to EntityID::class.java),
-        IntegerColumnType::class to (IntSerializer to Int::class.java),
-        BooleanColumnType::class to (BoolSerializer to Boolean::class.java),
-        EnumerationNameColumnType::class to (EnumSerializer to Enum::class.java),
-        JsonBColumnType::class to (JsonSerializer to Any::class.java),
-        LongColumnType::class to (LongSerializer to Long::class.java),
-        DoubleColumnType::class to (DoubleSerializer to Double::class.java),
-        DecimalColumnType::class to (DecimalSerializer to BigDecimal::class.java),
-        TextColumnType::class to (StringSerializer to String::class.java),
-        DateColumnType::class to (LocalDateSerializer to LocalDate::class.java),
-        JavaLocalDateColumnType::class to (LocalDateSerializer to LocalDate::class.java),
-        JavaLocalDateTimeColumnType::class to (LocalDateTimeSerializer to LocalDateTime::class.java),
-        UUIDColumnType::class to (UUIDSerializer to UUID::class.java),
-        BasicBinaryColumnType::class to (BinarySerializer to ByteArray::class.java),
-    )
+    val serializers = SerializerManager.serializers
 
     var redis: FuseRedisAPI = FuseRedisAPI(this)
 
@@ -181,7 +123,6 @@ class FuseAPI {
 class FuseRedisAPI(
     val api: FuseAPI
 ) {
-
     fun populate(table: UUIDTable, row: ResultRow) {
         transaction {
             val uuid = row[table.id].value
