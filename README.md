@@ -45,7 +45,7 @@ JSON requires an extra step in order to function:
 You have to use `registerSerializer()` in order for the JSON to be able to serialize and deserialize properly from Redis.
 
 Array example:
-```
+```kt
 val json = Json {  
     prettyPrint = true  
     isLenient = false  
@@ -59,12 +59,12 @@ val testArray = jsonb<List<TestClass>>(
 )
 	.default(emptyList())
 	.registerSerializer(  
-	    ListSerializer(TestClass.serializer()),  
-	    List::class.java
+		ListSerializer(TestClass.serializer()),  
+		List::class.java
 	)
 ```
 Object example:
-```
+```kt
 val json = Json {  
     prettyPrint = true  
     isLenient = false  
