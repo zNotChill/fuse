@@ -77,7 +77,7 @@ val testJson = jsonb<TestClass>(
 	TestClass.serializer()
 )  
     .default(
-	    TestClass("default", 0, false)
+		TestClass("default", 0, false)
     )  
     .registerSerializer(  
         TestClass.serializer(),  
