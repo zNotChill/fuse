@@ -58,6 +58,10 @@ class RedisRow(
                             }
 
                             else -> {
+                                if (serializedValue == "null") {
+                                    // Don't bother serializing null values
+                                    return@forEach
+                                }
                                 serializer.deserialize(serializedValue, valueType)
                             }
                         }

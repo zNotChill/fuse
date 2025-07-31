@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.1.21"
     kotlin("plugin.serialization") version "2.1.21"
+    `maven-publish`
 }
 
 group = "me.znotchill"
@@ -8,6 +9,7 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 val exposedVersion = "0.61.0"
@@ -22,8 +24,6 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:${exposedVersion}")
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:${exposedVersion}")
     implementation("org.jetbrains.exposed:exposed-json:${exposedVersion}")
-    implementation("org.jetbrains.exposed:exposed-money:${exposedVersion}")
-    implementation("org.jetbrains.exposed:exposed-spring-boot-starter:${exposedVersion}")
 
     implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("io.lettuce:lettuce-core:6.3.0.RELEASE")
@@ -37,4 +37,15 @@ tasks.test {
 }
 kotlin {
     jvmToolchain(21)
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            groupId = "me.znotchill"
+            artifactId = "fuse"
+            version = "1.0.0"
+        }
+    }
 }
