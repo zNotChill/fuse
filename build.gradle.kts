@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "me.znotchill"
-version = "1.0-SNAPSHOT"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -39,13 +39,19 @@ kotlin {
     jvmToolchain(21)
 }
 
+val sourcesJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("sources")
+    from(sourceSets.main.get().allSource)
+}
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
-            groupId = "me.znotchill"
+            group = group
             artifactId = "fuse"
-            version = "1.0.0"
+            version = version
+            artifact(sourcesJar.get())
         }
     }
 }

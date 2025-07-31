@@ -19,6 +19,12 @@ class RedisRow(
     private val redis: RedisCommands<String, String>,
     private val serializers: Map<KClass<*>, Pair<RedisSerializer, Class<*>>>
 ) {
+    /**
+     * Pushes the current state of the Redis row to the database.
+     * Ignores null values and only updates columns that have been set.
+     *
+     * @return Unit
+     */
     fun pushToDatabase() {
         val row = this
         val table = row.table
@@ -75,6 +81,34 @@ class RedisRow(
         }
     }
 
+    /**
+     * Deletes the specified columns from the Redis row.
+     * If no columns are specified, the entire row is deleted.
+     * @param columns The columns to delete.
+     * @return Unit
+     */
+    fun delete(vararg columns: Column<*>) {
+        transaction {
+            val key = "${table.tableName}:$uuid"
+
+            if (columns.isEmpty()) {
+                // If no columns are specified, delete the entire row
+                redis.del(key)
+                return@transaction
+            }
+
+            for (column in columns) {
+                redis.hdel(key, column.name)
+            }
+        }
+    }
+
+    /**
+     * Gets the value of the specified column from the Redis row.
+     * Results are cast to the appropriate type based on the column's type.
+     *
+     * @return The value of the column with the appropriate type, or null if the column does not exist.
+     */
     @Suppress("UNCHECKED_CAST")
     operator fun <T : Any> get(column: Column<T>): T? {
         return transaction {
@@ -90,6 +124,20 @@ class RedisRow(
         }
     }
 
+    /**
+     * Sets the value of the specified column in the Redis row.
+     *
+     * If the column is of type [JsonBColumnType], it will be serialized using the registered [KSerializer].
+     *
+     * If the column is of a different type, it will be serialized using the registered [RedisSerializer].
+     *
+     * If no serializer is registered for the column's type, an [IllegalStateException] will be thrown.
+     *
+     * @param column The column to set the value for.
+     * @param value The value to set for the column. If null, the column will not be set.
+     * @return Unit
+     * @throws IllegalStateException If no serializer is registered for the column's type or if no [KSerializer] is registered for the value.
+      */
     operator fun <T : Any> set(column: Column<T>, value: T?) {
         transaction {
             val key = "${table.tableName}:$uuid"
