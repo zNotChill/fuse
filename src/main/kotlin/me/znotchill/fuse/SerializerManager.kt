@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.BooleanColumnType
 import org.jetbrains.exposed.sql.DecimalColumnType
 import org.jetbrains.exposed.sql.DoubleColumnType
 import org.jetbrains.exposed.sql.EntityIDColumnType
+import org.jetbrains.exposed.sql.EnumerationColumnType
 import org.jetbrains.exposed.sql.EnumerationNameColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.LongColumnType
@@ -43,6 +44,7 @@ object SerializerManager {
         IntegerColumnType::class to (IntSerializer to Int::class.java),
         BooleanColumnType::class to (BoolSerializer to Boolean::class.java),
         EnumerationNameColumnType::class to (EnumSerializer to Enum::class.java),
+        EnumerationColumnType::class to (EnumSerializer to Enum::class.java),
         JsonBColumnType::class to (JsonSerializer to Any::class.java),
         LongColumnType::class to (LongSerializer to Long::class.java),
         DoubleColumnType::class to (DoubleSerializer to Double::class.java),

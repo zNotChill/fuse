@@ -6,6 +6,7 @@ import me.znotchill.fuse.SerializerManager
 import me.znotchill.fuse.redis.serializers.JsonSerializer
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.EnumerationColumnType
 import org.jetbrains.exposed.sql.EnumerationNameColumnType
 import org.jetbrains.exposed.sql.json.JsonBColumnType
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -55,6 +56,11 @@ class RedisRow(
 
                         val deserializedValue: Any = when (columnType) {
                             is EnumerationNameColumnType<*> -> {
+                                val enumClass = columnType.klass.java as Class<*>
+                                serializer.deserialize(serializedValue, enumClass)
+                            }
+
+                            is EnumerationColumnType<*> -> {
                                 val enumClass = columnType.klass.java as Class<*>
                                 serializer.deserialize(serializedValue, enumClass)
                             }
@@ -117,8 +123,12 @@ class RedisRow(
                 ?: return@transaction null
 
             val columnType = column.columnType
-            val (serializer, valueType) = serializers[columnType::class]
+            var (serializer, valueType) = serializers[columnType::class]
                 ?: throw IllegalStateException("No serializer registered for type ${columnType::class}")
+
+            if (columnType is EnumerationColumnType<*>) {
+                valueType = columnType.klass.java
+            }
 
             return@transaction serializer.deserialize(serializedValue, valueType) as T
         }
