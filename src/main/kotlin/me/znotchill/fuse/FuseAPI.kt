@@ -45,6 +45,7 @@ class FuseAPI {
      * @param redisPort The port of the Redis server.
      * @param redisUser The username for the Redis server.
      * @param redisPassword The password for the Redis server.
+     * @param redisClient Pass in a pre-existing redis client
      *
      * @return True if the connection was successful, false otherwise.
      */
@@ -56,19 +57,24 @@ class FuseAPI {
         redisHost: String,
         redisPort: Int,
         redisUser: String,
-        redisPassword: String
+        redisPassword: String,
+        redisClient: StatefulRedisConnection<String, String>? = null
     ): Boolean {
         logger.info("Starting FuseAPI connection...")
         this.databaseUrl = databaseUrl
         this.redisUrl = "redis://$redisHost:$redisPort"
 
         try {
-            val redisUri = RedisURI.Builder.redis(redisHost, redisPort)
-                .withAuthentication(redisUser, redisPassword)
-                .build()
+            if (redisClient == null) {
+                val redisUri = RedisURI.Builder.redis(redisHost, redisPort)
+                    .withAuthentication(redisUser, redisPassword)
+                    .build()
 
-            val client = RedisClient.create(redisUri)
-            this.redisConnection = client.connect()
+                val client = RedisClient.create(redisUri)
+                this.redisConnection = client.connect()
+            } else {
+                this.redisConnection = redisClient
+            }
 
             this.database = Database.connect(
                 url = databaseUrl,
