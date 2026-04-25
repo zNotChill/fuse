@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "me.znotchill"
-version = "1.0.2"
+version = "1.0.3"
 
 repositories {
     mavenCentral()
@@ -53,5 +53,18 @@ publishing {
             version = version
             artifact(sourcesJar.get())
         }
+    }
+
+
+    repositories {
+        maven {
+            name = "znotchill"
+            url = uri("https://repo.znotchill.me/repository/maven-releases/")
+            credentials {
+                username = findProperty("zRepoUsername") as String? ?: System.getenv("MAVEN_USER")
+                password = findProperty("zRepoPassword") as String? ?: System.getenv("MAVEN_PASS")
+            }
+        }
+        mavenLocal()
     }
 }
