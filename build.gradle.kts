@@ -12,7 +12,7 @@ repositories {
     mavenLocal()
 }
 
-val exposedVersion = "0.61.0"
+val exposedVersion = "1.2.0"
 dependencies {
     testImplementation(kotlin("test"))
 

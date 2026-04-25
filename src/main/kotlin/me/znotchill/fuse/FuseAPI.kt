@@ -7,11 +7,20 @@ import io.lettuce.core.api.sync.RedisCommands
 import me.znotchill.fuse.database.RowRef
 import me.znotchill.fuse.redis.RedisField
 import me.znotchill.fuse.redis.RedisRow
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.dao.id.UUIDTable
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.statements.InsertStatement
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.dao.id.java.UUIDTable
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.statements.InsertStatement
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -56,8 +65,8 @@ class FuseAPI {
         databaseDriver: String,
         redisHost: String,
         redisPort: Int,
-        redisUser: String,
-        redisPassword: String,
+        redisUser: String? = null,
+        redisPassword: String? = null,
         redisClient: StatefulRedisConnection<String, String>? = null
     ): Boolean {
         logger.info("Starting FuseAPI connection...")
@@ -66,9 +75,13 @@ class FuseAPI {
 
         try {
             if (redisClient == null) {
-                val redisUri = RedisURI.Builder.redis(redisHost, redisPort)
-                    .withAuthentication(redisUser, redisPassword)
-                    .build()
+                val redisUriBuilder = RedisURI.Builder.redis(redisHost, redisPort)
+
+                if (redisUser != null) {
+                    redisUriBuilder.withAuthentication(redisUser, redisPassword ?: "")
+                }
+
+                val redisUri = redisUriBuilder.build()
 
                 val client = RedisClient.create(redisUri)
                 this.redisConnection = client.connect()
@@ -109,7 +122,10 @@ class FuseAPI {
      *
      * @return [RowRef] representing the newly created row.
      */
-    fun new(table: UUIDTable, init: UUIDTable.(InsertStatement<EntityID<UUID>>) -> Unit): RowRef {
+    fun <ID : Comparable<ID>> new(
+        table: IdTable<ID>,
+        init: IdTable<ID>.(InsertStatement<EntityID<ID>>) -> Unit
+    ): RowRef<ID> {
         val id = transaction {
             table.insertAndGetId { row ->
                 init(row)
@@ -132,7 +148,7 @@ class FuseAPI {
      * @param id The UUID of the row to retrieve.
      * @return The [ResultRow] if found, or null if not found.
      */
-    fun get(table: UUIDTable, id: UUID): ResultRow? = transaction {
+    fun <ID : Comparable<ID>> get(table: IdTable<ID>, id: ID): ResultRow? = transaction {
         table.selectAll()
             .where { table.id eq id }
             .firstOrNull()
@@ -147,8 +163,8 @@ class FuseAPI {
      * @return The first matching [ResultRow] or null if no match is found.
      */
     fun select(
-        table: UUIDTable,
-        predicate: SqlExpressionBuilder.() -> Op<Boolean>
+        table: IdTable<*>,
+        predicate: () -> Op<Boolean>
     ): ResultRow? = transaction {
         table.selectAll()
             .where(predicate)
@@ -165,8 +181,8 @@ class FuseAPI {
      * @return True if at least one row matches the predicate, false otherwise.
      */
     fun exists(
-        table: UUIDTable,
-        predicate: SqlExpressionBuilder.() -> Op<Boolean>
+        table: IdTable<*>,
+        predicate: () -> Op<Boolean>
     ): Boolean = transaction {
         table.selectAll()
             .where(predicate)
@@ -185,20 +201,19 @@ class FuseRedisAPI(
      * @param row The database row containing the data to populate.
      * @return Unit
      */
-    fun populate(table: UUIDTable, row: ResultRow) {
+    fun <ID : Comparable<ID>> populate(table: IdTable<ID>, row: ResultRow) {
         transaction {
-            val uuid = row[table.id].value
+            val idValue = row[table.id].value
 
             val redisRow = RedisRow(
                 table = table,
-                uuid = uuid,
+                id = idValue,
                 redis = api.commands,
                 serializers = api.serializers
             )
 
             table.columns.forEach { column ->
                 val value = row[column]
-
                 @Suppress("UNCHECKED_CAST")
                 redisRow[column as Column<Any>] = value
             }
@@ -214,10 +229,10 @@ class FuseRedisAPI(
      * @param uuid The UUID of the row to retrieve.
      * @return A [RedisRow] instance representing the row in Redis.
      */
-    fun <T : UUIDTable> get(table: T, uuid: UUID): RedisRow {
+    fun <ID : Comparable<ID>, T : IdTable<ID>> get(table: T, id: ID): RedisRow<ID> {
         return RedisRow(
             table = table,
-            uuid = uuid,
+            id = id,
             redis = api.commands,
             serializers = api.serializers
         )

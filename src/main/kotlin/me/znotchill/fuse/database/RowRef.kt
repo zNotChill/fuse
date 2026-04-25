@@ -1,9 +1,8 @@
 package me.znotchill.fuse.database
 
-import org.jetbrains.exposed.dao.id.UUIDTable
-import java.util.UUID
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
 
-data class RowRef(
-    val table: UUIDTable,
-    val id: UUID
+data class RowRef<ID : Comparable<ID>>(
+    val table: IdTable<ID>,
+    val id: ID
 )

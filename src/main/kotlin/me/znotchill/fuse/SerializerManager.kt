@@ -14,23 +14,13 @@ import me.znotchill.fuse.redis.serializers.LocalDateTimeSerializer
 import me.znotchill.fuse.redis.serializers.LongSerializer
 import me.znotchill.fuse.redis.serializers.StringSerializer
 import me.znotchill.fuse.redis.serializers.UUIDSerializer
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.BasicBinaryColumnType
-import org.jetbrains.exposed.sql.BooleanColumnType
-import org.jetbrains.exposed.sql.DecimalColumnType
-import org.jetbrains.exposed.sql.DoubleColumnType
-import org.jetbrains.exposed.sql.EntityIDColumnType
-import org.jetbrains.exposed.sql.EnumerationColumnType
-import org.jetbrains.exposed.sql.EnumerationNameColumnType
-import org.jetbrains.exposed.sql.IntegerColumnType
-import org.jetbrains.exposed.sql.LongColumnType
-import org.jetbrains.exposed.sql.TextColumnType
-import org.jetbrains.exposed.sql.UUIDColumnType
-import org.jetbrains.exposed.sql.VarCharColumnType
-import org.jetbrains.exposed.sql.javatime.JavaLocalDateColumnType
-import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
-import org.jetbrains.exposed.sql.json.JsonBColumnType
+import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.datetime.LocalDateColumnType
+import org.jetbrains.exposed.v1.core.java.UUIDColumnType
+import org.jetbrains.exposed.v1.javatime.JavaLocalDateColumnType
+import org.jetbrains.exposed.v1.javatime.JavaLocalDateTimeColumnType
+import org.jetbrains.exposed.v1.json.JsonBColumnType
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -50,7 +40,7 @@ object SerializerManager {
         DoubleColumnType::class to (DoubleSerializer to Double::class.java),
         DecimalColumnType::class to (DecimalSerializer to BigDecimal::class.java),
         TextColumnType::class to (StringSerializer to String::class.java),
-        DateColumnType::class to (LocalDateSerializer to LocalDate::class.java),
+        LocalDateColumnType::class to (LocalDateSerializer to LocalDate::class.java),
         JavaLocalDateColumnType::class to (LocalDateSerializer to LocalDate::class.java),
         JavaLocalDateTimeColumnType::class to (LocalDateTimeSerializer to LocalDateTime::class.java),
         UUIDColumnType::class to (UUIDSerializer to UUID::class.java),

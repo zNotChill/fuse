@@ -4,22 +4,25 @@ import io.lettuce.core.api.sync.RedisCommands
 import kotlinx.serialization.KSerializer
 import me.znotchill.fuse.SerializerManager
 import me.znotchill.fuse.redis.serializers.JsonSerializer
-import org.jetbrains.exposed.dao.id.UUIDTable
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.EnumerationColumnType
-import org.jetbrains.exposed.sql.EnumerationNameColumnType
-import org.jetbrains.exposed.sql.json.JsonBColumnType
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.EnumerationColumnType
+import org.jetbrains.exposed.v1.core.EnumerationNameColumnType
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.json.JsonBColumnType
 import java.util.*
 import kotlin.reflect.KClass
 
-class RedisRow(
-    val table: UUIDTable,
-    val uuid: UUID,
+class RedisRow<ID : Comparable<ID>>(
+    val table: IdTable<ID>,
+    val id: ID,
     private val redis: RedisCommands<String, String>,
     private val serializers: Map<KClass<*>, Pair<RedisSerializer, Class<*>>>
 ) {
+    private val redisKey: String
+        get() = "${table.tableName}:$id"
     /**
      * Pushes the current state of the Redis row to the database.
      * Ignores null values and only updates columns that have been set.
@@ -29,13 +32,13 @@ class RedisRow(
     fun pushToDatabase() {
         val row = this
         val table = row.table
-        val uuid = row.uuid
+        val uuid = row.id
 
         transaction {
             val key = "${table.tableName}:$uuid"
             val fields = redis.hgetall(key)
 
-            table.update({ table.id eq uuid }) { statement ->
+            table.update({ table.id eq  uuid }) { statement ->
                 table.columns.forEach { column ->
                     if (column == table.id) return@forEach
                     val columnName = column.name
@@ -95,16 +98,12 @@ class RedisRow(
      */
     fun delete(vararg columns: Column<*>) {
         transaction {
-            val key = "${table.tableName}:$uuid"
-
             if (columns.isEmpty()) {
-                // If no columns are specified, delete the entire row
-                redis.del(key)
+                redis.del(redisKey)
                 return@transaction
             }
-
             for (column in columns) {
-                redis.hdel(key, column.name)
+                redis.hdel(redisKey, column.name)
             }
         }
     }
@@ -118,8 +117,7 @@ class RedisRow(
     @Suppress("UNCHECKED_CAST")
     operator fun <T : Any> get(column: Column<T>): T? {
         return transaction {
-            val key = "${table.tableName}:$uuid"
-            val serializedValue = redis.hget(key, column.name)
+            val serializedValue = redis.hget(redisKey, column.name)
                 ?: return@transaction null
 
             val columnType = column.columnType
@@ -150,14 +148,11 @@ class RedisRow(
       */
     operator fun <T : Any> set(column: Column<T>, value: T?) {
         transaction {
-            val key = "${table.tableName}:$uuid"
-
             val serializedValue = if (column.columnType is JsonBColumnType) {
                 val registeredEntry = SerializerManager.findSerializerFor(value!!)
                     ?: throw IllegalStateException("No KSerializer registered for ${value::class.java}")
 
                 val (serializer, _) = registeredEntry.value
-
                 @Suppress("UNCHECKED_CAST")
                 val typedSerializer = serializer as KSerializer<T>
 
@@ -169,9 +164,7 @@ class RedisRow(
                 serializer.serialize(value)
             }
 
-            redis.hset(key, column.name, serializedValue)
+            redis.hset(redisKey, column.name, serializedValue)
         }
     }
-
-
 }

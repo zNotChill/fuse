@@ -1,8 +1,8 @@
 package me.znotchill.fuse
 
 import kotlinx.serialization.KSerializer
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.json.JsonBColumnType
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.json.JsonBColumnType
 
 fun <T> Column<T>.registerSerializer(
     serializer: KSerializer<T>,
