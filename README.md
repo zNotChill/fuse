@@ -20,7 +20,10 @@ You still need to import exposed as normal, as well as lettuce (custom Redis dri
 - jsonb
 
 ```kt
-implementation("com.github.zNotChill:fuse:v1.0.0")
+repositories {
+    maven("https://repo.znotchill.me/repository/maven-releases/")
+}
+implementation("me.znotchill:fuse:1.0.4")
 ```
 
 Define a table as normal:
